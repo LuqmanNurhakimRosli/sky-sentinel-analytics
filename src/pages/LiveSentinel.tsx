@@ -1,52 +1,13 @@
-import { useState, useEffect, useCallback } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+import { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import { GlassPanel } from "@/components/GlassPanel";
 import { StatusBadge } from "@/components/StatusBadge";
 import { RiskGauge } from "@/components/RiskGauge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { calculateFuzzyRisk, FuzzyResult } from "@/utils/fuzzyEngine";
-import { MALAYSIA_STATIONS, WeatherData, fetchWeatherData, WeatherStation } from "@/utils/weatherApi";
-import { Radar, RefreshCw, MapPin, Wind, Droplets, Thermometer, Wifi, WifiOff, Clock } from "lucide-react";
+import { MALAYSIA_STATIONS, WeatherData, fetchWeatherData } from "@/utils/weatherApi";
+import { Radar, RefreshCw, MapPin, Wind, Droplets, Thermometer, Wifi, WifiOff, Clock, Navigation } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-// Custom marker icons
-const createMarkerIcon = (status: "Stable" | "Caution" | "Critical" | "loading") => {
-  const colors = {
-    Stable: "#10b981",
-    Caution: "#f59e0b",
-    Critical: "#f43f5e",
-    loading: "#6b7280",
-  };
-  
-  return L.divIcon({
-    className: "custom-marker",
-    html: `
-      <div style="
-        width: 24px;
-        height: 24px;
-        background: ${colors[status]};
-        border: 2px solid white;
-        border-radius: 50%;
-        box-shadow: 0 0 15px ${colors[status]}80;
-        ${status === "Critical" ? "animation: pulse 1.5s infinite;" : ""}
-      "></div>
-    `,
-    iconSize: [24, 24],
-    iconAnchor: [12, 12],
-  });
-};
-
-// Map center controller
-const MapController = ({ center }: { center: [number, number] }) => {
-  const map = useMap();
-  useEffect(() => {
-    map.flyTo(center, 10, { duration: 1 });
-  }, [center, map]);
-  return null;
-};
 
 const LiveSentinel = () => {
   const [selectedStation, setSelectedStation] = useState<string>("putrajaya");
@@ -267,65 +228,109 @@ const LiveSentinel = () => {
             )}
           </div>
 
-          {/* Map */}
+          {/* Map - Interactive Station Overview */}
           <div className="lg:col-span-2">
-            <GlassPanel className="p-2 h-[600px]">
-              <MapContainer
-                center={currentStation?.coordinates || [4.2105, 108.9758]}
-                zoom={6}
-                className="w-full h-full rounded-lg"
-                style={{ background: "hsl(var(--background))" }}
-              >
-                <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-                
-                {currentStation && (
-                  <MapController center={currentStation.coordinates} />
-                )}
-                
+            <GlassPanel className="p-6 h-[600px] overflow-auto">
+              <h3 className="text-sm text-primary font-display uppercase tracking-widest border-b border-border/50 pb-2 mb-6">
+                Malaysia Station Network
+              </h3>
+              
+              {/* Station Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {MALAYSIA_STATIONS.map((station) => {
-                  const result = results.get(station.id);
-                  const status = result?.status || "loading";
+                  const stationWeather = weatherData.get(station.id);
+                  const stationResult = results.get(station.id);
+                  const isSelected = selectedStation === station.id;
                   
                   return (
-                    <Marker
+                    <button
                       key={station.id}
-                      position={station.coordinates}
-                      icon={createMarkerIcon(status as any)}
-                      eventHandlers={{
-                        click: () => setSelectedStation(station.id),
-                      }}
+                      onClick={() => setSelectedStation(station.id)}
+                      className={cn(
+                        "p-4 rounded-lg border text-left transition-all duration-300",
+                        isSelected 
+                          ? "border-primary bg-primary/10 shadow-glow" 
+                          : "border-border/50 bg-background/30 hover:border-primary/50"
+                      )}
                     >
-                      <Popup>
-                        <div className="p-2 min-w-[200px]">
-                          <h4 className="font-display font-bold text-primary mb-2">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <Navigation className={cn(
+                            "w-4 h-4",
+                            isSelected ? "text-primary" : "text-muted-foreground"
+                          )} />
+                          <span className="font-display font-bold text-foreground">
                             {station.name}
-                          </h4>
-                          {weatherData.get(station.id) && result && (
-                            <div className="space-y-2 text-xs">
-                              <p>Temp: {weatherData.get(station.id)?.temperature}°C</p>
-                              <p>Humidity: {weatherData.get(station.id)?.humidity}%</p>
-                              <p>Wind: {weatherData.get(station.id)?.windSpeed} km/h</p>
-                              <div className="pt-2 border-t border-border">
-                                <p className={cn(
-                                  "font-bold",
-                                  result.status === "Stable" && "text-status-safe",
-                                  result.status === "Caution" && "text-status-caution",
-                                  result.status === "Critical" && "text-status-critical"
-                                )}>
-                                  Risk: {result.status} ({result.dangerPercentage.toFixed(1)}%)
-                                </p>
-                              </div>
-                            </div>
-                          )}
+                          </span>
                         </div>
-                      </Popup>
-                    </Marker>
+                        {stationResult && (
+                          <div className={cn(
+                            "w-3 h-3 rounded-full",
+                            stationResult.status === "Stable" && "bg-status-safe shadow-glow-safe",
+                            stationResult.status === "Caution" && "bg-status-caution shadow-glow-caution",
+                            stationResult.status === "Critical" && "bg-status-critical shadow-glow-critical animate-pulse-critical"
+                          )} />
+                        )}
+                      </div>
+                      
+                      <p className="text-xs text-muted-foreground mb-3 font-mono">
+                        {station.location}
+                      </p>
+                      
+                      {stationWeather && stationResult ? (
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">Temp</span>
+                            <span className="text-orange-400 font-mono">{stationWeather.temperature}°C</span>
+                          </div>
+                          <div className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">Humidity</span>
+                            <span className="text-blue-400 font-mono">{stationWeather.humidity}%</span>
+                          </div>
+                          <div className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">Wind</span>
+                            <span className="text-primary font-mono">{stationWeather.windSpeed} km/h</span>
+                          </div>
+                          <div className="pt-2 mt-2 border-t border-border/30">
+                            <div className="flex justify-between items-center">
+                              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Risk</span>
+                              <span className={cn(
+                                "text-sm font-mono font-bold",
+                                stationResult.status === "Stable" && "text-status-safe",
+                                stationResult.status === "Caution" && "text-status-caution",
+                                stationResult.status === "Critical" && "text-status-critical"
+                              )}>
+                                {stationResult.dangerPercentage.toFixed(1)}%
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center py-4">
+                          <RefreshCw className="w-4 h-4 animate-spin text-muted-foreground" />
+                        </div>
+                      )}
+                    </button>
                   );
                 })}
-              </MapContainer>
+              </div>
+              
+              {/* Coordinates Display */}
+              {currentStation && (
+                <div className="mt-6 p-4 bg-background/30 rounded-lg border border-border/30">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-primary" />
+                      <span className="text-xs uppercase tracking-wider text-muted-foreground font-mono">
+                        Coordinates
+                      </span>
+                    </div>
+                    <span className="font-mono text-sm text-foreground">
+                      {currentStation.coordinates[0].toFixed(4)}°N, {currentStation.coordinates[1].toFixed(4)}°E
+                    </span>
+                  </div>
+                </div>
+              )}
             </GlassPanel>
           </div>
         </div>
