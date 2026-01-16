@@ -43,10 +43,7 @@ const LiveSentinel = () => {
     setLoading(false);
   }, []);
 
-  // Initial fetch
-  useEffect(() => {
-    fetchAllData();
-  }, [fetchAllData]);
+  // No auto-fetch - start with static state
 
   const currentStation = MALAYSIA_STATIONS.find(s => s.id === selectedStation);
   const currentWeather = weatherData.get(selectedStation);

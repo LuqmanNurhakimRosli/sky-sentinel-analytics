@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { GlassPanel } from "@/components/GlassPanel";
 import { StatusBadge } from "@/components/StatusBadge";
 import { RiskGauge } from "@/components/RiskGauge";
@@ -8,24 +8,29 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { calculateFuzzyRisk, FuzzyResult } from "@/utils/fuzzyEngine";
 import { MALAYSIA_STATIONS, WeatherData, fetchWeatherData } from "@/utils/weatherApi";
+import { testTelegramConnection } from "@/utils/telegramService";
+import { useToast } from "@/hooks/use-toast";
 import { 
   Gauge, RefreshCw, MapPin, ArrowRight, RotateCcw, 
-  AlertTriangle, Sparkles, TrendingUp, TrendingDown
+  AlertTriangle, Sparkles, TrendingUp, TrendingDown, Send, Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const Simulator = () => {
+  const { toast } = useToast();
+  
   // Selected station
   const [selectedStation, setSelectedStation] = useState<string>("putrajaya");
   
-  // Live data
+  // Live data - starts as null (static state)
   const [liveData, setLiveData] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [testingSend, setTestingSend] = useState(false);
   
-  // Simulated values
-  const [simWind, setSimWind] = useState(20);
-  const [simHumidity, setSimHumidity] = useState(70);
-  const [simTemperature, setSimTemperature] = useState(30);
+  // Simulated values - start at 0 for static state
+  const [simWind, setSimWind] = useState(0);
+  const [simHumidity, setSimHumidity] = useState(0);
+  const [simTemperature, setSimTemperature] = useState(0);
   
   // Alert modal
   const [alertOpen, setAlertOpen] = useState(false);
@@ -48,6 +53,33 @@ const Simulator = () => {
       temperature: simTemperature,
     });
   }, [simWind, simHumidity, simTemperature]);
+
+  // Check for critical and show alert
+  const checkCritical = (result: FuzzyResult) => {
+    if (result.status === "Critical" && !alertShown) {
+      setAlertOpen(true);
+      setAlertShown(true);
+    }
+  };
+
+  // Handle slider changes with critical check
+  const handleWindChange = (value: number) => {
+    setSimWind(value);
+    const result = calculateFuzzyRisk({ wind: value, humidity: simHumidity, temperature: simTemperature });
+    checkCritical(result);
+  };
+
+  const handleHumidityChange = (value: number) => {
+    setSimHumidity(value);
+    const result = calculateFuzzyRisk({ wind: simWind, humidity: value, temperature: simTemperature });
+    checkCritical(result);
+  };
+
+  const handleTemperatureChange = (value: number) => {
+    setSimTemperature(value);
+    const result = calculateFuzzyRisk({ wind: simWind, humidity: simHumidity, temperature: value });
+    checkCritical(result);
+  };
 
   // Fetch live data
   const fetchLiveData = async () => {
@@ -74,18 +106,28 @@ const Simulator = () => {
     }
   };
 
-  // Initial fetch
-  useEffect(() => {
-    fetchLiveData();
-  }, [selectedStation]);
-
-  // Trigger alert when crossing into Critical
-  useEffect(() => {
-    if (simResult.status === "Critical" && !alertShown) {
-      setAlertOpen(true);
-      setAlertShown(true);
+  // Test Telegram Alert
+  const handleTestAlert = async () => {
+    const station = MALAYSIA_STATIONS.find(s => s.id === selectedStation);
+    setTestingSend(true);
+    
+    const result = await testTelegramConnection(station?.name || "Test Location");
+    
+    setTestingSend(false);
+    
+    if (result.success) {
+      toast({
+        title: "Test Alert Sent!",
+        description: "Check your Telegram for the test message.",
+      });
+    } else {
+      toast({
+        title: "Test Failed",
+        description: result.error || "Could not send test alert. Check your .env configuration.",
+        variant: "destructive",
+      });
     }
-  }, [simResult.status, alertShown]);
+  };
 
   // Calculate deltas
   const getDelta = (sim: number, live: number | undefined) => {
@@ -138,7 +180,7 @@ const Simulator = () => {
               variant="outline"
             >
               <RefreshCw className={cn("w-4 h-4 mr-2", loading && "animate-spin")} />
-              Sync
+              {liveData ? "Sync" : "Fetch Data"}
             </Button>
           </div>
         </div>
@@ -151,10 +193,17 @@ const Simulator = () => {
               <h3 className="text-sm text-primary font-display uppercase tracking-widest">
                 Current Conditions
               </h3>
-              <span className="text-xs text-status-safe font-mono flex items-center gap-1">
-                <span className="w-2 h-2 bg-status-safe rounded-full animate-pulse" />
-                LIVE
-              </span>
+              {liveData ? (
+                <span className="text-xs text-status-safe font-mono flex items-center gap-1">
+                  <span className="w-2 h-2 bg-status-safe rounded-full animate-pulse" />
+                  LIVE
+                </span>
+              ) : (
+                <span className="text-xs text-muted-foreground font-mono flex items-center gap-1">
+                  <span className="w-2 h-2 bg-muted-foreground rounded-full" />
+                  AWAITING DATA
+                </span>
+              )}
             </div>
 
             {liveData && liveResult ? (
@@ -194,11 +243,12 @@ const Simulator = () => {
                 </p>
               </div>
             ) : (
-              <div className="flex items-center justify-center h-64">
-                <div className="text-center text-muted-foreground">
-                  <RefreshCw className="w-8 h-8 mx-auto mb-2 animate-spin" />
-                  <p className="text-sm font-mono">Loading live data...</p>
+              <div className="flex flex-col items-center justify-center h-64 text-center">
+                <div className="w-16 h-16 rounded-full bg-muted/20 flex items-center justify-center mb-4">
+                  <Gauge className="w-8 h-8 text-muted-foreground" />
                 </div>
+                <p className="text-sm text-muted-foreground font-mono mb-2">No live data loaded</p>
+                <p className="text-xs text-muted-foreground">Click "Fetch Data" to sync with weather station</p>
               </div>
             )}
           </GlassPanel>
@@ -209,16 +259,32 @@ const Simulator = () => {
               <h3 className="text-sm text-primary font-display uppercase tracking-widest">
                 Simulation Controls
               </h3>
-              <Button
-                onClick={resetToLive}
-                size="sm"
-                variant="ghost"
-                className="text-xs"
-                disabled={!liveData}
-              >
-                <RotateCcw className="w-3 h-3 mr-1" />
-                Reset
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={handleTestAlert}
+                  size="sm"
+                  variant="outline"
+                  className="text-xs border-status-critical/50 text-status-critical hover:bg-status-critical/10"
+                  disabled={testingSend}
+                >
+                  {testingSend ? (
+                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                  ) : (
+                    <Send className="w-3 h-3 mr-1" />
+                  )}
+                  Test Alert
+                </Button>
+                <Button
+                  onClick={resetToLive}
+                  size="sm"
+                  variant="ghost"
+                  className="text-xs"
+                  disabled={!liveData}
+                >
+                  <RotateCcw className="w-3 h-3 mr-1" />
+                  Reset
+                </Button>
+              </div>
             </div>
 
             <div className="space-y-8">
@@ -231,9 +297,9 @@ const Simulator = () => {
                   max={100}
                   unit="km/h"
                   color="primary"
-                  onChange={setSimWind}
+                  onChange={handleWindChange}
                   liveValue={liveData?.windSpeed}
-                  showLiveIndicator
+                  showLiveIndicator={!!liveData}
                 />
                 {liveData && (
                   <DeltaIndicator delta={getDelta(simWind, liveData.windSpeed)} />
@@ -249,9 +315,9 @@ const Simulator = () => {
                   max={100}
                   unit="%"
                   color="blue"
-                  onChange={setSimHumidity}
+                  onChange={handleHumidityChange}
                   liveValue={liveData?.humidity}
-                  showLiveIndicator
+                  showLiveIndicator={!!liveData}
                 />
                 {liveData && (
                   <DeltaIndicator delta={getDelta(simHumidity, liveData.humidity)} />
@@ -267,28 +333,44 @@ const Simulator = () => {
                   max={50}
                   unit="°C"
                   color="orange"
-                  onChange={setSimTemperature}
+                  onChange={handleTemperatureChange}
                   liveValue={liveData?.temperature}
-                  showLiveIndicator
+                  showLiveIndicator={!!liveData}
                 />
                 {liveData && (
                   <DeltaIndicator delta={getDelta(simTemperature, liveData.temperature)} />
                 )}
               </div>
             </div>
+
+            {/* Current Simulation Result */}
+            <div className="mt-6 p-4 bg-background/30 rounded-lg border border-border/30 text-center">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-2 font-mono">
+                Simulation Risk Level
+              </p>
+              <div className="flex items-center justify-center gap-4">
+                <RiskGauge value={simResult.dangerPercentage} size={100} />
+                <div>
+                  <StatusBadge status={simResult.status} size="sm" />
+                  <p className="text-xl font-mono font-bold mt-1">
+                    {simResult.dangerPercentage.toFixed(1)}%
+                  </p>
+                </div>
+              </div>
+            </div>
           </GlassPanel>
         </div>
 
         {/* Comparison Results */}
-        <GlassPanel className="p-6">
-          <h3 className="text-sm text-primary font-display uppercase tracking-widest border-b border-border/50 pb-2 mb-6 flex items-center gap-2">
-            <Sparkles className="w-4 h-4" />
-            Comparison Analysis
-          </h3>
+        {liveResult && (
+          <GlassPanel className="p-6">
+            <h3 className="text-sm text-primary font-display uppercase tracking-widest border-b border-border/50 pb-2 mb-6 flex items-center gap-2">
+              <Sparkles className="w-4 h-4" />
+              Comparison Analysis
+            </h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
-            {/* Live Result */}
-            {liveResult && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+              {/* Live Result */}
               <div className="text-center p-6 bg-background/30 rounded-lg border border-border/30">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-2 font-mono">
                   Current (Live)
@@ -298,33 +380,31 @@ const Simulator = () => {
                   {liveResult.dangerPercentage.toFixed(1)}%
                 </p>
               </div>
-            )}
 
-            {/* Arrow */}
-            <div className="hidden md:flex items-center justify-center">
-              <div className="flex items-center gap-2">
-                <ArrowRight className="w-8 h-8 text-primary" />
+              {/* Arrow */}
+              <div className="hidden md:flex items-center justify-center">
+                <div className="flex items-center gap-2">
+                  <ArrowRight className="w-8 h-8 text-primary" />
+                </div>
               </div>
-            </div>
 
-            {/* Simulated Result */}
-            <div className={cn(
-              "text-center p-6 rounded-lg border",
-              simResult.status === "Critical" 
-                ? "bg-status-critical/10 border-status-critical/30 animate-pulse-critical" 
-                : simResult.status === "Caution"
-                ? "bg-status-caution/10 border-status-caution/30"
-                : "bg-status-safe/10 border-status-safe/30"
-            )}>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-2 font-mono">
-                Simulated
-              </p>
-              <StatusBadge status={simResult.status} size="sm" />
-              <p className="text-2xl font-mono font-bold mt-2">
-                {simResult.dangerPercentage.toFixed(1)}%
-              </p>
-              
-              {liveResult && (
+              {/* Simulated Result */}
+              <div className={cn(
+                "text-center p-6 rounded-lg border",
+                simResult.status === "Critical" 
+                  ? "bg-status-critical/10 border-status-critical/30 animate-pulse-critical" 
+                  : simResult.status === "Caution"
+                  ? "bg-status-caution/10 border-status-caution/30"
+                  : "bg-status-safe/10 border-status-safe/30"
+              )}>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-2 font-mono">
+                  Simulated
+                </p>
+                <StatusBadge status={simResult.status} size="sm" />
+                <p className="text-2xl font-mono font-bold mt-2">
+                  {simResult.dangerPercentage.toFixed(1)}%
+                </p>
+                
                 <p className={cn(
                   "text-sm font-mono mt-2",
                   simResult.dangerPercentage > liveResult.dangerPercentage 
@@ -340,26 +420,26 @@ const Simulator = () => {
                     : "No Change"
                   }
                 </p>
-              )}
-            </div>
-          </div>
-
-          {/* Warning if Critical */}
-          {simResult.status === "Critical" && (
-            <div className="mt-6 p-4 rounded-lg bg-status-critical/10 border border-status-critical/30 flex items-center gap-3">
-              <AlertTriangle className="w-6 h-6 text-status-critical flex-shrink-0" />
-              <div>
-                <p className="text-status-critical font-display font-bold uppercase text-sm">
-                  Critical Conditions Detected
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Under these simulated conditions, UAV operations are NOT recommended. 
-                  Consider postponing or relocating activities.
-                </p>
               </div>
             </div>
-          )}
-        </GlassPanel>
+
+            {/* Warning if Critical */}
+            {simResult.status === "Critical" && (
+              <div className="mt-6 p-4 rounded-lg bg-status-critical/10 border border-status-critical/30 flex items-center gap-3">
+                <AlertTriangle className="w-6 h-6 text-status-critical flex-shrink-0" />
+                <div>
+                  <p className="text-status-critical font-display font-bold uppercase text-sm">
+                    Critical Conditions Detected
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Under these simulated conditions, UAV operations are NOT recommended. 
+                    Consider postponing or relocating activities.
+                  </p>
+                </div>
+              </div>
+            )}
+          </GlassPanel>
+        )}
       </div>
 
       {/* Alert Modal */}
@@ -368,6 +448,9 @@ const Simulator = () => {
         onClose={() => setAlertOpen(false)}
         dangerLevel={simResult.dangerPercentage}
         location={currentStation?.name}
+        wind={simWind}
+        humidity={simHumidity}
+        temperature={simTemperature}
       />
     </div>
   );
