@@ -40,19 +40,21 @@ export const HudSlider = ({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-3">
         <label className={cn("text-xs uppercase tracking-widest font-mono", colorClasses[color])}>
           {label}
         </label>
-        <div className="flex items-center gap-2">
-          {showLiveIndicator && liveValue !== undefined && (
-            <span className="text-xs text-muted-foreground font-mono opacity-60">
-              LIVE
-            </span>
-          )}
+
+        <div className="flex flex-col items-end leading-none">
           <span className={cn("font-mono text-sm", colorClasses[color])}>
             {value} {unit}
           </span>
+
+          {showLiveIndicator && liveValue !== undefined && (
+            <span className="mt-1 text-[10px] text-muted-foreground font-mono whitespace-nowrap">
+              LIVE {Math.round(liveValue)} {unit}
+            </span>
+          )}
         </div>
       </div>
       
@@ -74,13 +76,9 @@ export const HudSlider = ({
         {/* Live Value Marker */}
         {showLiveIndicator && livePercentage !== null && (
           <div
-            className="absolute top-0 w-0.5 h-7 bg-foreground/60 transition-all duration-500"
+            className="absolute top-2 w-0.5 h-6 bg-foreground/60 transition-all duration-500"
             style={{ left: `${livePercentage}%` }}
-          >
-            <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] text-muted-foreground whitespace-nowrap">
-              LIVE
-            </div>
-          </div>
+          />
         )}
         
         <Slider
