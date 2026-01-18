@@ -8,6 +8,7 @@ import { MobileNav } from "@/components/MobileNav";
 import TheLab from "./pages/TheLab";
 import LiveSentinel from "./pages/LiveSentinel";
 import Simulator from "./pages/Simulator";
+import Documentation from "./pages/Documentation";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,6 +26,7 @@ const App = () => (
               <Route path="/" element={<TheLab />} />
               <Route path="/sentinel" element={<LiveSentinel />} />
               <Route path="/simulator" element={<Simulator />} />
+              <Route path="/docs" element={<Documentation />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </main>
