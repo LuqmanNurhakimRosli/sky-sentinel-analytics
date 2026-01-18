@@ -44,9 +44,16 @@ export const HudSlider = ({
         <label className={cn("text-xs uppercase tracking-widest font-mono", colorClasses[color])}>
           {label}
         </label>
-        <span className={cn("font-mono text-sm", colorClasses[color])}>
-          {value} {unit}
-        </span>
+        <div className="flex items-center gap-2">
+          {showLiveIndicator && liveValue !== undefined && (
+            <span className="text-xs text-muted-foreground font-mono opacity-60">
+              LIVE
+            </span>
+          )}
+          <span className={cn("font-mono text-sm", colorClasses[color])}>
+            {value} {unit}
+          </span>
+        </div>
       </div>
       
       <div className="relative">

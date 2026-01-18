@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { calculateFuzzyRisk, FuzzyResult } from "@/utils/fuzzyEngine";
 import { MALAYSIA_STATIONS, WeatherData, fetchWeatherData } from "@/utils/weatherApi";
-import { testTelegramConnection } from "@/utils/telegramService";
+import { sendTelegramAlert } from "@/utils/telegramService";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Gauge, RefreshCw, MapPin, ArrowRight, RotateCcw, 
@@ -106,12 +106,24 @@ const Simulator = () => {
     }
   };
 
-  // Test Telegram Alert
-  const handleTestAlert = async () => {
+  // Get current location name - "Simulator" before data fetch, station name after
+  const getCurrentLocationName = () => {
+    if (!liveData) return "Simulator";
     const station = MALAYSIA_STATIONS.find(s => s.id === selectedStation);
+    return station?.name || "Unknown Location";
+  };
+
+  // Test Telegram Alert - uses current simulated values
+  const handleTestAlert = async () => {
     setTestingSend(true);
     
-    const result = await testTelegramConnection(station?.name || "Test Location");
+    const result = await sendTelegramAlert({
+      location: getCurrentLocationName(),
+      wind: simWind,
+      humidity: simHumidity,
+      temperature: simTemperature,
+      riskPercentage: simResult.dangerPercentage,
+    });
     
     setTestingSend(false);
     
@@ -447,7 +459,7 @@ const Simulator = () => {
         open={alertOpen}
         onClose={() => setAlertOpen(false)}
         dangerLevel={simResult.dangerPercentage}
-        location={currentStation?.name}
+        location={getCurrentLocationName()}
         wind={simWind}
         humidity={simHumidity}
         temperature={simTemperature}
