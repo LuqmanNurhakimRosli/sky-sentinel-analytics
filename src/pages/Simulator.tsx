@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { GlassPanel } from "@/components/GlassPanel";
 import { StatusBadge } from "@/components/StatusBadge";
 import { RiskGauge } from "@/components/RiskGauge";
@@ -21,6 +21,13 @@ const Simulator = () => {
   
   // Selected station
   const [selectedStation, setSelectedStation] = useState<string>("putrajaya");
+
+  // When switching station, clear any previously fetched live overlay to avoid mixed/"stale" indicators.
+  useEffect(() => {
+    setLiveData(null);
+    setAlertShown(false);
+    setAlertOpen(false);
+  }, [selectedStation]);
   
   // Live data - starts as null (static state)
   const [liveData, setLiveData] = useState<WeatherData | null>(null);
@@ -84,26 +91,38 @@ const Simulator = () => {
   // Fetch live data
   const fetchLiveData = async () => {
     setLoading(true);
-    const station = MALAYSIA_STATIONS.find(s => s.id === selectedStation);
-    if (station) {
+    setLiveData(null);
+
+    try {
+      const station = MALAYSIA_STATIONS.find((s) => s.id === selectedStation);
+      if (!station) return;
+
       const data = await fetchWeatherData(station);
       setLiveData(data);
       setSimWind(Math.round(data.windSpeed));
       setSimHumidity(Math.round(data.humidity));
       setSimTemperature(Math.round(data.temperature));
       setAlertShown(false);
+      setAlertOpen(false);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  // Reset to live values
-  const resetToLive = () => {
+  // Reset sliders: to live values if available, otherwise back to zero (default simulator state)
+  const resetSimulation = () => {
     if (liveData) {
       setSimWind(Math.round(liveData.windSpeed));
       setSimHumidity(Math.round(liveData.humidity));
       setSimTemperature(Math.round(liveData.temperature));
-      setAlertShown(false);
+    } else {
+      setSimWind(0);
+      setSimHumidity(0);
+      setSimTemperature(0);
     }
+
+    setAlertShown(false);
+    setAlertOpen(false);
   };
 
   // Get current location name - "Simulator" before data fetch, station name after
@@ -287,11 +306,11 @@ const Simulator = () => {
                   Test Alert
                 </Button>
                 <Button
-                  onClick={resetToLive}
+                  onClick={resetSimulation}
                   size="sm"
                   variant="ghost"
                   className="text-xs"
-                  disabled={!liveData}
+                  disabled={loading}
                 >
                   <RotateCcw className="w-3 h-3 mr-1" />
                   Reset
@@ -473,8 +492,8 @@ const DeltaIndicator = ({ delta }: { delta: number }) => {
   if (Math.abs(delta) < 0.1) return null;
   
   return (
-    <span className={cn(
-      "absolute top-0 right-0 text-xs font-mono flex items-center gap-1",
+    <div className={cn(
+      "mt-1 flex justify-end text-xs font-mono items-center gap-1",
       delta > 0 ? "text-status-caution" : "text-status-safe"
     )}>
       {delta > 0 ? (
@@ -488,7 +507,7 @@ const DeltaIndicator = ({ delta }: { delta: number }) => {
           {delta.toFixed(1)}
         </>
       )}
-    </span>
+    </div>
   );
 };
 
