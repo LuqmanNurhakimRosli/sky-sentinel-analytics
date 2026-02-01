@@ -1,0 +1,7 @@
+[build]
+  publish = "dist"
+
+[[headers]]
+  for = "/favicon.*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
