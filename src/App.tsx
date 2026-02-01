@@ -9,6 +9,7 @@ import TheLab from "./pages/TheLab";
 import LiveSentinel from "./pages/LiveSentinel";
 import Simulator from "./pages/Simulator";
 import Documentation from "./pages/Documentation";
+import Layout from "./pages/Layout";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,11 +24,13 @@ const App = () => (
           <Header />
           <main className="flex-1">
             <Routes>
-              <Route path="/" element={<TheLab />} />
-              <Route path="/sentinel" element={<LiveSentinel />} />
-              <Route path="/simulator" element={<Simulator />} />
-              <Route path="/docs" element={<Documentation />} />
-              <Route path="*" element={<NotFound />} />
+              <Route path="/" element={<Layout />}>
+                  <Route index element={<TheLab />} />
+                  <Route path="sentinel" element={<LiveSentinel />} />
+                  <Route path="simulator" element={<Simulator />} />
+                  <Route path="docs" element={<Documentation />} />
+                </Route>
+                  <Route path="*" element={<NotFound />} />
             </Routes>
           </main>
           <MobileNav />
