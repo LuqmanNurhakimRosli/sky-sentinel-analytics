@@ -260,34 +260,57 @@ const Documentation = () => {
                 <SubSection title="2.3 Rule Base (27 IF-THEN Rules)">
                   <p className="mb-4">
                     The knowledge base consists of 27 rules covering all combinations of the three input variables.
-                    Rules are evaluated using the AND operator (minimum t-norm). Below is a representative sample:
+                    Rules are evaluated using the AND operator (minimum t-norm). The complete rule base is listed below,
+                    organized by temperature group:
                   </p>
-                  <div className="bg-background/50 p-4 rounded-lg border border-border/30 space-y-2 font-mono text-xs">
-                    <RuleDisplay
-                      id={1}
-                      rule="IF Wind=Low AND Humidity=Low AND Temp=Low THEN Risk=Stable"
-                    />
-                    <RuleDisplay
-                      id={5}
-                      rule="IF Wind=Medium AND Humidity=Medium AND Temp=Low THEN Risk=Caution"
-                    />
-                    <RuleDisplay
-                      id={9}
-                      rule="IF Wind=High AND Humidity=High AND Temp=Low THEN Risk=Critical"
-                    />
-                    <RuleDisplay
-                      id={14}
-                      rule="IF Wind=Medium AND Humidity=Medium AND Temp=Medium THEN Risk=Caution"
-                    />
-                    <RuleDisplay
-                      id={21}
-                      rule="IF Wind=Low AND Humidity=High AND Temp=High THEN Risk=Critical"
-                    />
-                    <RuleDisplay
-                      id={27}
-                      rule="IF Wind=High AND Humidity=High AND Temp=High THEN Risk=Critical"
-                    />
-                    <p className="text-muted-foreground pt-2">... and 21 additional rules</p>
+                  <div className="bg-background/50 p-4 rounded-lg border border-border/30 space-y-4 font-mono text-xs">
+                    {/* Low Temperature (Cold) — Rules 1–9 */}
+                    <div className="space-y-2">
+                      <p className="text-primary font-semibold text-[11px] uppercase tracking-widest border-b border-primary/20 pb-1">
+                        Temperature = Low (Cold)
+                      </p>
+                      <RuleDisplay id={1}  rule="IF Wind=Low AND Humidity=Low AND Temp=Low THEN Risk=Stable" />
+                      <RuleDisplay id={2}  rule="IF Wind=Low AND Humidity=Medium AND Temp=Low THEN Risk=Stable" />
+                      <RuleDisplay id={3}  rule="IF Wind=Low AND Humidity=High AND Temp=Low THEN Risk=Caution" />
+                      <RuleDisplay id={4}  rule="IF Wind=Medium AND Humidity=Low AND Temp=Low THEN Risk=Stable" />
+                      <RuleDisplay id={5}  rule="IF Wind=Medium AND Humidity=Medium AND Temp=Low THEN Risk=Caution" />
+                      <RuleDisplay id={6}  rule="IF Wind=Medium AND Humidity=High AND Temp=Low THEN Risk=Caution" />
+                      <RuleDisplay id={7}  rule="IF Wind=High AND Humidity=Low AND Temp=Low THEN Risk=Caution" />
+                      <RuleDisplay id={8}  rule="IF Wind=High AND Humidity=Medium AND Temp=Low THEN Risk=Caution" />
+                      <RuleDisplay id={9}  rule="IF Wind=High AND Humidity=High AND Temp=Low THEN Risk=Critical" />
+                    </div>
+
+                    {/* Medium Temperature (Mild/Optimal) — Rules 10–18 */}
+                    <div className="space-y-2">
+                      <p className="text-primary font-semibold text-[11px] uppercase tracking-widest border-b border-primary/20 pb-1">
+                        Temperature = Medium (Mild / Optimal)
+                      </p>
+                      <RuleDisplay id={10} rule="IF Wind=Low AND Humidity=Low AND Temp=Medium THEN Risk=Stable" />
+                      <RuleDisplay id={11} rule="IF Wind=Low AND Humidity=Medium AND Temp=Medium THEN Risk=Stable" />
+                      <RuleDisplay id={12} rule="IF Wind=Low AND Humidity=High AND Temp=Medium THEN Risk=Caution" />
+                      <RuleDisplay id={13} rule="IF Wind=Medium AND Humidity=Low AND Temp=Medium THEN Risk=Stable" />
+                      <RuleDisplay id={14} rule="IF Wind=Medium AND Humidity=Medium AND Temp=Medium THEN Risk=Caution" />
+                      <RuleDisplay id={15} rule="IF Wind=Medium AND Humidity=High AND Temp=Medium THEN Risk=Caution" />
+                      <RuleDisplay id={16} rule="IF Wind=High AND Humidity=Low AND Temp=Medium THEN Risk=Caution" />
+                      <RuleDisplay id={17} rule="IF Wind=High AND Humidity=Medium AND Temp=Medium THEN Risk=Critical" />
+                      <RuleDisplay id={18} rule="IF Wind=High AND Humidity=High AND Temp=Medium THEN Risk=Critical" />
+                    </div>
+
+                    {/* High Temperature (Hot) — Rules 19–27 */}
+                    <div className="space-y-2">
+                      <p className="text-primary font-semibold text-[11px] uppercase tracking-widest border-b border-primary/20 pb-1">
+                        Temperature = High (Hot)
+                      </p>
+                      <RuleDisplay id={19} rule="IF Wind=Low AND Humidity=Low AND Temp=High THEN Risk=Caution" />
+                      <RuleDisplay id={20} rule="IF Wind=Low AND Humidity=Medium AND Temp=High THEN Risk=Caution" />
+                      <RuleDisplay id={21} rule="IF Wind=Low AND Humidity=High AND Temp=High THEN Risk=Critical" />
+                      <RuleDisplay id={22} rule="IF Wind=Medium AND Humidity=Low AND Temp=High THEN Risk=Caution" />
+                      <RuleDisplay id={23} rule="IF Wind=Medium AND Humidity=Medium AND Temp=High THEN Risk=Critical" />
+                      <RuleDisplay id={24} rule="IF Wind=Medium AND Humidity=High AND Temp=High THEN Risk=Critical" />
+                      <RuleDisplay id={25} rule="IF Wind=High AND Humidity=Low AND Temp=High THEN Risk=Critical" />
+                      <RuleDisplay id={26} rule="IF Wind=High AND Humidity=Medium AND Temp=High THEN Risk=Critical" />
+                      <RuleDisplay id={27} rule="IF Wind=High AND Humidity=High AND Temp=High THEN Risk=Critical" />
+                    </div>
                   </div>
                 </SubSection>
 
